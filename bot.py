@@ -8,8 +8,9 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 PAPER_MODE = os.getenv("PAPER_MODE", "true")
 
+
 def send(msg):
-    requests.post(
+    r = requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         data={
             "chat_id": CHAT_ID,
@@ -17,6 +18,10 @@ def send(msg):
         },
         timeout=20
     )
+
+    print("Telegram Status:", r.status_code)
+    print(r.text)
+
 
 try:
 
@@ -68,7 +73,8 @@ try:
 
     print("Score:", score)
 
-    if score >= 50:
+    # HIGH QUALITY SIGNAL ONLY
+    if score >= 80:
 
         stop_loss = round(price * 0.99, 2)
         tp1 = round(price * 1.02, 2)
