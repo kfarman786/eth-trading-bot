@@ -25,9 +25,14 @@ params = {
 }
 
 r = requests.get(url, params=params)
+
+print("STATUS:", r.status_code)
+
 data = r.json()
 
-candles = data["result"]
+print(data)
+
+exit()
 
 df = pd.DataFrame(candles)
 
