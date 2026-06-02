@@ -2,10 +2,9 @@ import requests
 
 r = requests.get("https://api.india.delta.exchange/v2/products")
 
-data = r.json()
+for p in r.json()["result"]:
+    symbol = p.get("symbol", "")
 
-print("TOTAL PRODUCTS:", len(data["result"]))
-
-for p in data["result"]:
-    if "ETH" in p.get("symbol", ""):
+    if symbol == "ETHUSD":
+        print("FOUND ETHUSD")
         print(p)
