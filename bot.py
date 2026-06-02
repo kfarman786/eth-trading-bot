@@ -19,6 +19,7 @@ def send(msg):
     )
 
 try:
+
     r = requests.get(
         "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
         params={
@@ -29,7 +30,13 @@ try:
         timeout=20
     )
 
-    prices = [x[1] for x in r.json()["prices"]]
+    data = r.json()
+
+    if "prices" not in data:
+        print("Price data not found")
+        exit()
+
+    prices = [x[1] for x in data["prices"]]
 
     df = pd.DataFrame()
     df["close"] = prices
@@ -50,11 +57,14 @@ try:
 
     score = 0
 
-    if ema21_now > ema50_now:
-        score += 50
+    if price > ema21_now:
+        score += 30
 
-    if 45 <= rsi_now <= 70:
-        score += 50
+    if ema21_now > ema50_now:
+        score += 40
+
+    if rsi_now > 50:
+        score += 30
 
     print("Score:", score)
 
@@ -63,14 +73,13 @@ try:
         stop_loss = round(price * 0.99, 2)
         tp1 = round(price * 1.02, 2)
 
-        send(
-            f"""🟢 ETHUSD LONG SIGNAL
+        message = f"""
+🟢 ETHUSD LONG SIGNAL
 
 Price: ${price:.2f}
 
 EMA21: {ema21_now:.2f}
 EMA50: {ema50_now:.2f}
-
 RSI: {rsi_now:.2f}
 
 Confidence: {score}/100
@@ -80,7 +89,8 @@ TP: ${tp1}
 
 Mode: PAPER
 """
-        )
+
+        send(message)
 
         print("Signal sent")
 
