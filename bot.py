@@ -58,7 +58,7 @@ try:
 
     print("Score:", score)
 
-    if score >= 80:
+    if score >= 50:
 
         stop_loss = round(price * 0.99, 2)
         tp1 = round(price * 1.02, 2)
