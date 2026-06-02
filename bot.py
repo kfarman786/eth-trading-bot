@@ -7,18 +7,21 @@ from ta.momentum import RSIIndicator
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
+
 def send_telegram(message):
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         data={
             "chat_id": CHAT_ID,
             "text": message
-        }
+        },
+        timeout=20
     )
+
 
 try:
     url = "https://api.binance.com/api/v3/klines"
-    
+
     params = {
         "symbol": "ETHUSDT",
         "interval": "15m",
@@ -27,11 +30,12 @@ try:
 
     r = requests.get(url, params=params, timeout=20)
 
-print("Status:", r.status_code)
+    print("Status:", r.status_code)
 
-data = r.json()
+    data = r.json()
 
-print("Response:", data)
+    print("Response type:", type(data))
+    print("First item:", data[0] if isinstance(data, list) and len(data) > 0 else data)
 
     closes = [float(x[4]) for x in data]
 
@@ -45,9 +49,14 @@ print("Response:", data)
 
     current_price = closes[-1]
 
-    current_ema21 = round(ema21.iloc[-1], 2)
-    current_ema50 = round(ema50.iloc[-1], 2)
-    current_rsi = round(rsi.iloc[-1], 2)
+    current_ema21 = round(float(ema21.iloc[-1]), 2)
+    current_ema50 = round(float(ema50.iloc[-1]), 2)
+    current_rsi = round(float(rsi.iloc[-1]), 2)
+
+    print("Price:", current_price)
+    print("EMA21:", current_ema21)
+    print("EMA50:", current_ema50)
+    print("RSI:", current_rsi)
 
     if current_ema21 > current_ema50 and 45 <= current_rsi <= 65:
 
@@ -63,10 +72,3 @@ RSI: {current_rsi}
 
 Bullish setup detected.
 """
-
-        send_telegram(msg)
-
-    print("Bot completed.")
-
-except Exception as e:
-    print("ERROR:", e)
