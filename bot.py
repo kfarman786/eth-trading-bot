@@ -4,34 +4,48 @@ import requests
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
+def send(msg):
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        data={"chat_id": CHAT_ID, "text": msg},
+        timeout=20
+    )
+
 try:
     r = requests.get(
-        "https://api.coingecko.com/api/v3/simple/price",
+        "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
         params={
-            "ids": "ethereum",
-            "vs_currencies": "usd"
+            "vs_currency": "usd",
+            "days": "2",
+            "interval": "hourly"
         },
         timeout=20
     )
 
     data = r.json()
 
-    price = data["ethereum"]["usd"]
+    prices = [p[1] for p in data["prices"]]
 
-    print("ETH Price:", price)
+    current_price = prices[-1]
 
-    msg = f"ETH Price: ${price}"
+    sma20 = sum(prices[-20:]) / 20
 
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={
-            "chat_id": CHAT_ID,
-            "text": msg
-        },
-        timeout=20
-    )
+    print("Price:", current_price)
+    print("SMA20:", sma20)
 
-    print("Telegram sent")
+    if current_price > sma20:
+
+        send(
+            f"🚀 ETH BUY WATCH\n\n"
+            f"Price: ${current_price:.2f}\n"
+            f"SMA20: ${sma20:.2f}\n\n"
+            f"Trend appears bullish."
+        )
+
+        print("BUY signal sent")
+
+    else:
+        print("No signal")
 
 except Exception as e:
     print("ERROR:", str(e))
