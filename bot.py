@@ -4,19 +4,34 @@ import requests
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-print("Bot started")
+try:
+    r = requests.get(
+        "https://api.coingecko.com/api/v3/simple/price",
+        params={
+            "ids": "ethereum",
+            "vs_currencies": "usd"
+        },
+        timeout=20
+    )
 
-message = "ETH Bot Test OK"
+    data = r.json()
 
-r = requests.post(
-    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-    data={
-        "chat_id": CHAT_ID,
-        "text": message
-    }
-)
+    price = data["ethereum"]["usd"]
 
-print("Status:", r.status_code)
-print("Response:", r.text)
+    print("ETH Price:", price)
 
-print("Bot completed")
+    msg = f"ETH Price: ${price}"
+
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        data={
+            "chat_id": CHAT_ID,
+            "text": msg
+        },
+        timeout=20
+    )
+
+    print("Telegram sent")
+
+except Exception as e:
+    print("ERROR:", str(e))
