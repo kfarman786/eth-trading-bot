@@ -26,7 +26,12 @@ try:
     }
 
     r = requests.get(url, params=params, timeout=20)
-    data = r.json()
+
+print("Status:", r.status_code)
+
+data = r.json()
+
+print("Response:", data)
 
     closes = [float(x[4]) for x in data]
 
