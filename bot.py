@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import pandas as pd
 from ta.trend import EMAIndicator
@@ -8,79 +9,155 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 PAPER_MODE = os.getenv("PAPER_MODE", "true")
 
+STATE_FILE = "paper_trades.json"
 
 def send(msg):
-    r = requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={
-            "chat_id": CHAT_ID,
-            "text": msg
-        },
-        timeout=20
-    )
+r = requests.post(
+f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+data={
+"chat_id": CHAT_ID,
+"text": msg
+},
+timeout=20
+)
 
-    print("Telegram Status:", r.status_code)
-    print(r.text)
+print("Telegram Status:", r.status_code)
 
+def load_state():
+with open(STATE_FILE, "r") as f:
+return json.load(f)
+
+def save_state(state):
+with open(STATE_FILE, "w") as f:
+json.dump(state, f, indent=2)
 
 try:
 
-    r = requests.get(
-        "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
-        params={
-            "vs_currency": "usd",
-            "days": "7",
-            "interval": "hourly"
-        },
-        timeout=20
-    )
+state = load_state()
 
-    data = r.json()
+r = requests.get(
+    "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
+    params={
+        "vs_currency": "usd",
+        "days": "7",
+        "interval": "hourly"
+    },
+    timeout=20
+)
 
-    if "prices" not in data:
-        print("Price data not found")
+data = r.json()
+
+if "prices" not in data:
+    print("Price data not found")
+    exit()
+
+prices = [x[1] for x in data["prices"]]
+
+df = pd.DataFrame()
+df["close"] = prices
+
+ema21 = EMAIndicator(df["close"], window=21).ema_indicator()
+ema50 = EMAIndicator(df["close"], window=50).ema_indicator()
+rsi = RSIIndicator(df["close"], window=14).rsi()
+
+price = float(df["close"].iloc[-1])
+ema21_now = float(ema21.iloc[-1])
+ema50_now = float(ema50.iloc[-1])
+rsi_now = float(rsi.iloc[-1])
+
+print("Price:", round(price, 2))
+print("EMA21:", round(ema21_now, 2))
+print("EMA50:", round(ema50_now, 2))
+print("RSI:", round(rsi_now, 2))
+
+trade = state["open_trade"]
+
+# CHECK OPEN TRADE
+if trade is not None:
+
+    if price >= trade["tp"]:
+
+        profit = state["balance"] * 0.02
+
+        state["balance"] += profit
+        state["wins"] += 1
+        state["open_trade"] = None
+
+        save_state(state)
+
+        send(
+
+f"""🎯 TAKE PROFIT HIT
+
+Entry: {trade['entry']}
+Exit: {price}
+
+Profit: ${profit:.2f}
+
+Balance: ${state['balance']:.2f}
+"""
+)
+
+        print("TP HIT")
         exit()
 
-    prices = [x[1] for x in data["prices"]]
+    elif price <= trade["sl"]:
 
-    df = pd.DataFrame()
-    df["close"] = prices
+        loss = state["balance"] * 0.01
 
-    ema21 = EMAIndicator(df["close"], window=21).ema_indicator()
-    ema50 = EMAIndicator(df["close"], window=50).ema_indicator()
-    rsi = RSIIndicator(df["close"], window=14).rsi()
+        state["balance"] -= loss
+        state["losses"] += 1
+        state["open_trade"] = None
 
-    price = float(df["close"].iloc[-1])
-    ema21_now = float(ema21.iloc[-1])
-    ema50_now = float(ema50.iloc[-1])
-    rsi_now = float(rsi.iloc[-1])
+        save_state(state)
 
-    print("Price:", round(price, 2))
-    print("EMA21:", round(ema21_now, 2))
-    print("EMA50:", round(ema50_now, 2))
-    print("RSI:", round(rsi_now, 2))
+        send(
 
-    score = 0
+f"""🛑 STOP LOSS HIT
 
-    if price > ema21_now:
-        score += 30
+Entry: {trade['entry']}
+Exit: {price}
 
-    if ema21_now > ema50_now:
-        score += 40
+Loss: ${loss:.2f}
 
-    if rsi_now > 50:
-        score += 30
+Balance: ${state['balance']:.2f}
+"""
+)
 
-    print("Score:", score)
+        print("SL HIT")
+        exit()
 
-    # HIGH QUALITY SIGNAL ONLY
-    if score >= 60:
+score = 0
 
-        stop_loss = round(price * 0.99, 2)
-        tp1 = round(price * 1.02, 2)
+if price > ema21_now:
+    score += 30
 
-        message = f"""
-🟢 ETHUSD LONG SIGNAL
+if ema21_now > ema50_now:
+    score += 40
+
+if rsi_now > 50:
+    score += 30
+
+print("Score:", score)
+
+if score >= 60 and state["open_trade"] is None:
+
+    stop_loss = round(price * 0.99, 2)
+    tp1 = round(price * 1.02, 2)
+
+    state["open_trade"] = {
+        "entry": price,
+        "sl": stop_loss,
+        "tp": tp1
+    }
+
+    state["total_trades"] += 1
+
+    save_state(state)
+
+    send(
+
+f"""🟢 PAPER TRADE OPENED
 
 Price: ${price:.2f}
 
@@ -93,15 +170,16 @@ Confidence: {score}/100
 SL: ${stop_loss}
 TP: ${tp1}
 
+Balance: ${state['balance']:.2f}
+
 Mode: PAPER
 """
+)
 
-        send(message)
+    print("Trade Opened")
 
-        print("Signal sent")
-
-    else:
-        print("No setup found")
+else:
+    print("No setup found")
 
 except Exception as e:
-    print("ERROR:", str(e))
+print("ERROR:", str(e))
