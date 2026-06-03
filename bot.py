@@ -1,16 +1,9 @@
-import os
-import requests
+import json
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+with open("paper_trades.json", "r") as f:
+    state = json.load(f)
 
-r = requests.post(
-    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-    data={
-        "chat_id": CHAT_ID,
-        "text": "✅ Paper Trading Bot Online"
-    }
-)
-
-print("Status:", r.status_code)
-print(r.text)
+print("Balance:", state["balance"])
+print("Wins:", state["wins"])
+print("Losses:", state["losses"])
+print("Open Trade:", state["open_trade"])
