@@ -7,7 +7,6 @@ from ta.momentum import RSIIndicator
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-PAPER_MODE = os.getenv("PAPER_MODE", "true")
 
 STATE_FILE = "paper_trades.json"
 
@@ -20,7 +19,6 @@ data={
 },
 timeout=20
 )
-
 print("Telegram Status:", r.status_code)
 
 def load_state():
@@ -70,63 +68,6 @@ print("EMA21:", round(ema21_now, 2))
 print("EMA50:", round(ema50_now, 2))
 print("RSI:", round(rsi_now, 2))
 
-trade = state["open_trade"]
-
-# CHECK OPEN TRADE
-if trade is not None:
-
-    if price >= trade["tp"]:
-
-        profit = state["balance"] * 0.02
-
-        state["balance"] += profit
-        state["wins"] += 1
-        state["open_trade"] = None
-
-        save_state(state)
-
-        send(
-
-f"""🎯 TAKE PROFIT HIT
-
-Entry: {trade['entry']}
-Exit: {price}
-
-Profit: ${profit:.2f}
-
-Balance: ${state['balance']:.2f}
-"""
-)
-
-        print("TP HIT")
-        exit()
-
-    elif price <= trade["sl"]:
-
-        loss = state["balance"] * 0.01
-
-        state["balance"] -= loss
-        state["losses"] += 1
-        state["open_trade"] = None
-
-        save_state(state)
-
-        send(
-
-f"""🛑 STOP LOSS HIT
-
-Entry: {trade['entry']}
-Exit: {price}
-
-Loss: ${loss:.2f}
-
-Balance: ${state['balance']:.2f}
-"""
-)
-
-        print("SL HIT")
-        exit()
-
 score = 0
 
 if price > ema21_now:
@@ -140,24 +81,15 @@ if rsi_now > 50:
 
 print("Score:", score)
 
-if score >= 60 and state["open_trade"] is None:
+# TEST MODE
+if score >= 0:
 
     stop_loss = round(price * 0.99, 2)
     tp1 = round(price * 1.02, 2)
 
-    state["open_trade"] = {
-        "entry": price,
-        "sl": stop_loss,
-        "tp": tp1
-    }
-
-    state["total_trades"] += 1
-
-    save_state(state)
-
     send(
 
-f"""🟢 PAPER TRADE OPENED
+f"""🟢 PAPER TRADE TEST
 
 Price: ${price:.2f}
 
@@ -165,18 +97,14 @@ EMA21: {ema21_now:.2f}
 EMA50: {ema50_now:.2f}
 RSI: {rsi_now:.2f}
 
-Confidence: {score}/100
+Score: {score}/100
 
 SL: ${stop_loss}
 TP: ${tp1}
-
-Balance: ${state['balance']:.2f}
-
-Mode: PAPER
 """
 )
 
-    print("Trade Opened")
+    print("Signal sent")
 
 else:
     print("No setup found")
