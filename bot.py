@@ -74,7 +74,7 @@ try:
     print("Score:", score)
 
     # HIGH QUALITY SIGNAL ONLY
-    if score >= 80:
+    if score >= 0:
 
         stop_loss = round(price * 0.99, 2)
         tp1 = round(price * 1.02, 2)
