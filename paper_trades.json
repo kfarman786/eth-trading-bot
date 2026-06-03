@@ -2,6 +2,10 @@
   "balance": 20000,
   "wins": 0,
   "losses": 0,
-  "total_trades": 0,
-  "open_trade": null
+  "total_trades": 1,
+  "open_trade": {
+    "entry": 1825.50,
+    "sl": 1807.24,
+    "tp": 1862.01
+  }
 }
